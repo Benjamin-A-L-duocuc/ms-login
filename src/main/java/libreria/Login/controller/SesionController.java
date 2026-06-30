@@ -1,6 +1,7 @@
 package libreria.Login.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -8,7 +9,6 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,10 +23,35 @@ public class SesionController {
     @Autowired
     private SesionService sesionService;
 
-    @PostMapping
-    public ResponseEntity<Sesion> crear(@RequestBody Sesion sesion) {
-        Sesion guardada = sesionService.guardar(sesion);
-        return ResponseEntity.ok(guardada);
+    @PostMapping("/iniciar")
+    public ResponseEntity<?> iniciarSesion(@RequestBody Map<String, Long> body) {
+        try {
+            Long idUsuario = body.get("idUsuario");
+            if (idUsuario == null) {
+                return ResponseEntity.badRequest().body("idUsuario es requerido");
+            }
+            Sesion sesion = sesionService.iniciarSesion(idUsuario);
+            return ResponseEntity.ok(sesion);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/cerrar")
+    public ResponseEntity<?> cerrarSesion(@PathVariable Long id) {
+        try {
+            Sesion sesion = sesionService.cerrarSesion(id);
+            return ResponseEntity.ok(sesion);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/usuario/{idUsuario}")
+    public ResponseEntity<Sesion> obtenerSesionActiva(@PathVariable Long idUsuario) {
+        return sesionService.obtenerSesionActivaPorUsuario(idUsuario)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping
@@ -39,16 +64,6 @@ public class SesionController {
         return sesionService.obtenerPorId(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Sesion> actualizar(@PathVariable Long id, @RequestBody Sesion sesion) {
-        try {
-            Sesion actualizada = sesionService.actualizar(id, sesion);
-            return ResponseEntity.ok(actualizada);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
     }
 
     @DeleteMapping("/{id}")
