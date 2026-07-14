@@ -1,34 +1,43 @@
-# Login (Sesiones)
+# Login — Gestor de Sesiones
 
-Gestiona sesiones de usuario: iniciar sesion, cerrar sesion, y consultar sesiones activas.
+## Que es
 
-## Puerto
+No es un servicio de autenticacion (no valida contrasenas). Es un **rastreador de sesiones**: registra que un usuario esta "conectado", y permite al resto del sistema preguntar: "esta usuario X activo ahora?". Piensa en el como el que lleva la lista de personas dentro de la tienda en este momento.
 
-**8092** | DB: `login_usuario`
+## Concepto clave: una sola sesion activa
 
-## Endpoints
+La regla principal es que **un usuario no puede tener mas de una sesion activa al mismo tiempo**. Si alguien intenta iniciar sesion cuando ya tiene una abierta, el sistema rechaza la peticion con un error. Para conectarse desde otro dispositivo, primero hay que cerrar la sesion anterior.
 
-| Metodo | Ruta | Descripcion |
-|--------|------|-------------|
-| POST | `/api/v1/sesiones/iniciar` | Iniciar sesion (body: `{"idUsuario": <Long>}`) |
-| POST | `/api/v1/sesiones/{id}/cerrar` | Cerrar sesion |
-| GET | `/api/v1/sesiones/usuario/{idUsuario}` | Sesiones activas de un usuario |
-| GET | `/api/v1/sesiones` | Listar todas las sesiones |
-| GET | `/api/v1/sesiones/{id}` | Obtener sesion por ID |
-| DELETE | `/api/v1/sesiones/{id}` | Eliminar sesion |
+## Ciclo de vida
 
-## Reglas de negocio
+```
+(iniciar sesion)  -->  Activa  -->  (cerrar sesion)  -->  Cerrada
+                           |
+                           +---> Expirada  [planeado, aun no implementado]
+```
 
-- Un usuario no puede tener mas de una sesion activa simultaneamente. Intentar iniciar una segunda sesion retorna error 400.
-- Estados posibles: `Activa`, `Cerrada`, `Expirada`.
+El estado `Expirada` existe en el codigo como placeholder para un futuro sistema de timeout automatico, pero actualmente nunca se usa — las sesiones se mantienen `Activa` indefinidamente hasta que se cierren manualmente.
 
-## Ejecucion
+## Como se usa en el sistema
+
+El servicio **TiendaWeb** (tienda en linea) verifica la sesion del usuario en Practicamente cada operacion: agregar al carrito, comprar, ver perfil, etc. Sin una sesion valida, no se puede hacer nada en la tienda.
+
+## Ejecutar
 
 ```cmd
 cd Login
 .\mvnw.cmd spring-boot:run
 ```
 
-## Entidades principales
+Puerto: **8092** | DB: `login_usuario`
 
-- **Sesion**: `id`, `idUsuario`, `fechaInicio`, `fechaFin`, `estado`
+## Endpoints
+
+| Metodo | Ruta | Que hace |
+|--------|------|----------|
+| POST | `/api/v1/sesiones/iniciar` | Iniciar sesion (body: `{"idUsuario": 1}`) |
+| POST | `/api/v1/sesiones/{id}/cerrar` | Cerrar sesion |
+| GET | `/api/v1/sesiones/usuario/{id}` | Verificar si un usuario tiene sesion activa |
+| GET | `/api/v1/sesiones` | Listar todas las sesiones |
+| GET | `/api/v1/sesiones/{id}` | Ver una sesion por ID |
+| DELETE | `/api/v1/sesiones/{id}` | Eliminar sesion (uso administrativo) |
